@@ -1,9 +1,5 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, requestUrl } from 'obsidian';
 
-//==============================================================================
-// INTERFACES
-//==============================================================================
-
 // Define a new interface for a single sync configuration
 interface SyncTarget {
 	docId: string;
@@ -29,6 +25,7 @@ const DEFAULT_SETTINGS: ClickUpSyncSettings = {
 	pageMapping: {}, // Initialize empty mapping
 }
 
+
 // Structure for ClickUp Page (simplified) from API response
 interface ClickUpPage {
 	id: string;
@@ -44,10 +41,7 @@ interface ClickUpPageNode extends ClickUpPage {
 	pages?: ClickUpPageNode[]; // Add pages field which may be used instead of children
 }
 
-//==============================================================================
-// MAIN PLUGIN CLASS
-//==============================================================================
-
+// Main Plugin Class
 export default class ClickUpSyncPlugin extends Plugin {
 	settings: ClickUpSyncSettings;
 
@@ -175,9 +169,7 @@ export default class ClickUpSyncPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	//==============================================================================
-	// CORE SYNC LOGIC
-	//==============================================================================
+	// --- Core Sync Logic ---
 
 	/**
 	 * Checks if a file is within any of the configured sync target folders.
@@ -281,6 +273,7 @@ export default class ClickUpSyncPlugin extends Plugin {
 		});
 		
 		// Second pass: build the tree by adding children to their parents
+		
 		pageMap.forEach(page => {
 			if (page.parent_id && pageMap.has(page.parent_id)) {
 				// If it has a parent, add it to the parent's children
@@ -511,7 +504,6 @@ export default class ClickUpSyncPlugin extends Plugin {
 	 * Iterates through each target, finds matching files, and syncs them.
 	 */
 	async syncVaultToClickupDoc() {
-		// --- Validation ---
 		const { clickUpApiKey, clickUpWorkspaceId, syncTargets } = this.settings;
 		if (!clickUpApiKey || !clickUpWorkspaceId) {
 			new Notice('ClickUp API Key or Workspace ID not configured.');
@@ -525,7 +517,6 @@ export default class ClickUpSyncPlugin extends Plugin {
 		new Notice(`Starting ClickUp Doc sync for ${syncTargets.length} target(s)...`);
 		console.log(`Starting ClickUp Doc sync for ${syncTargets.length} target(s)...`);
 
-		// --- Setup tracking variables ---
 		let totalSuccessCount = 0;
 		let totalErrorCount = 0;
 		const allMdFiles = this.app.vault.getMarkdownFiles(); // Get all files once
@@ -564,7 +555,17 @@ export default class ClickUpSyncPlugin extends Plugin {
 			console.log(`Found ${existingPages.length} existing pages in ClickUp Doc ${docId}.`);
 
 			// 2. Filter Obsidian files relevant to THIS target folder
-			const filesToSyncForTarget = this.getFilesForTarget(allMdFiles, folderPath);
+			const filesToSyncForTarget = allMdFiles.filter(file => {
+				const normalizedPath = folderPath === '' || folderPath.endsWith('/') 
+					? folderPath 
+					: folderPath + '/';
+				
+				if (normalizedPath === '') {
+					return true; // Match all files if folder path is empty (root)
+				}
+				return file.path.startsWith(normalizedPath);
+			});
+
 
 			if (filesToSyncForTarget.length === 0) {
 				console.log(`No specific markdown files found for sync target "${folderPath || '(Vault Root)'}".`);
@@ -574,127 +575,79 @@ export default class ClickUpSyncPlugin extends Plugin {
 
 			console.log(`Found ${filesToSyncForTarget.length} Obsidian files to sync for target "${folderPath || '(Vault Root)'}". Processing...`);
 
-			// 3. Process files for this target
-			const { success, error } = await this.processFilesForTarget(
-				filesToSyncForTarget,
-				target,
-				existingPagesTree,
-				existingPages
-			);
-			
-			totalSuccessCount += success;
-			totalErrorCount += error;
+			let targetSuccessCount = 0;
+			let targetErrorCount = 0;
 
-			console.log(`--- Target "${folderPath || '(Vault Root)'}" Sync Complete: Synced: ${success}, Failed: ${error} ---`);
+			// 3. Process each file for THIS target
+			for (const file of filesToSyncForTarget) {
+				// Try to find parent-child relationship based on folder structure
+				let parentId = target.parentPageId;
+
+				// If the file is in a subfolder, try to sync with the folder structure
+				const relativePath = folderPath ? file.path.substring(folderPath.length).replace(/^\/+/, '') : file.path;
+				const pathParts = relativePath.split('/');
+				
+				// If file is in a subfolder, attempt to use the folder structure to determine parent
+				if (pathParts.length > 1) {
+					let currentParentId = target.parentPageId;
+					
+					// For each directory level (except the last which is the file itself)
+					for (let i = 0; i < pathParts.length - 1; i++) {
+						const folderName = pathParts[i];
+						
+						// Try to find a page with this folder name to use as parent
+						// First in the flat list for backward compatibility
+						let folderPage = existingPages.find(page => page.name === folderName);
+						
+						// If not found in flat list, try using the tree search
+						if (!folderPage) {
+							const foundInTree = this.findPageByNameInTree(folderName, existingPagesTree);
+							if (foundInTree) {
+								folderPage = foundInTree;
+							}
+						}
+						
+						if (folderPage) {
+							currentParentId = folderPage.id;
+							console.log(`Found parent page for folder "${folderName}": ${currentParentId}`);
+						} else {
+							// Could create folder pages here if needed in the future
+							console.log(`No page found for folder "${folderName}". Using last known parent.`);
+						}
+					}
+					
+					// Use the last determined parent
+					parentId = currentParentId;
+				}
+				
+				// Create a modified target with potentially updated parentPageId
+				const modifiedTarget = {
+					...target,
+					parentPageId: parentId
+				};
+				
+				// Pass the modified target and both tree and flat page lists
+				const success = await this.syncFileToClickupPage(file, modifiedTarget, existingPages);
+				if (success) {
+					targetSuccessCount++;
+				} else {
+					targetErrorCount++;
+				}
+				// Optional delay: await sleep(100);
+			}
+
+			console.log(`--- Target "${folderPath || '(Vault Root)'}" Sync Complete: Synced: ${targetSuccessCount}, Failed: ${targetErrorCount} ---`);
+			totalSuccessCount += targetSuccessCount;
+			totalErrorCount += targetErrorCount;
 		} // End loop through syncTargets
 
 		// Mapping is saved within syncFileToClickupPage upon creation/discovery
+
 		new Notice(`ClickUp Doc Sync finished. Total Synced: ${totalSuccessCount}, Total Failed: ${totalErrorCount}.`);
 		console.log(`\n=== ClickUp Doc Sync Overall Complete. Total Synced: ${totalSuccessCount}, Total Failed: ${totalErrorCount} ===`);
 
 		// Optional: Run cleanup after all syncs are done
 		// await this.cleanupPageMapping();
-	}
-	
-	/**
-	 * Filter files that belong to a specific target folder
-	 */
-	private getFilesForTarget(allFiles: TFile[], folderPath: string): TFile[] {
-		return allFiles.filter(file => {
-			const normalizedPath = folderPath === '' || folderPath.endsWith('/') 
-				? folderPath 
-				: folderPath + '/';
-			
-			if (normalizedPath === '') {
-				return true; // Match all files if folder path is empty (root)
-			}
-			return file.path.startsWith(normalizedPath);
-		});
-	}
-	
-	/**
-	 * Process all files for a specific sync target
-	 */
-	private async processFilesForTarget(
-		files: TFile[],
-		target: SyncTarget,
-		pagesTree: ClickUpPageNode[],
-		existingPages: ClickUpPage[]
-	): Promise<{success: number, error: number}> {
-		let successCount = 0;
-		let errorCount = 0;
-		
-		for (const file of files) {
-			// Try to find parent-child relationship based on folder structure
-			let parentId = target.parentPageId;
-
-			// If the file is in a subfolder, try to sync with the folder structure
-			const relativePath = target.folderPath ? 
-				file.path.substring(target.folderPath.length).replace(/^\/+/, '') : 
-				file.path;
-				
-			const pathParts = relativePath.split('/');
-			
-			// If file is in a subfolder, attempt to use the folder structure to determine parent
-			if (pathParts.length > 1) {
-				parentId = this.findParentIdForFile(pathParts, existingPages, pagesTree, target.parentPageId);
-			}
-			
-			// Create a modified target with potentially updated parentPageId
-			const modifiedTarget = {
-				...target,
-				parentPageId: parentId
-			};
-			
-			// Pass the modified target and both tree and flat page lists
-			const success = await this.syncFileToClickupPage(file, modifiedTarget, existingPages);
-			if (success) {
-				successCount++;
-			} else {
-				errorCount++;
-			}
-		}
-		
-		return { success: successCount, error: errorCount };
-	}
-	
-	/**
-	 * Find the appropriate parent page ID based on folder structure
-	 */
-	private findParentIdForFile(
-		pathParts: string[],
-		existingPages: ClickUpPage[],
-		existingPagesTree: ClickUpPageNode[],
-		initialParentId: string | null
-	): string | null {
-		let currentParentId = initialParentId;
-		
-		// For each directory level (except the last which is the file itself)
-		for (let i = 0; i < pathParts.length - 1; i++) {
-			const folderName = pathParts[i];
-			
-			// Try to find a page with this folder name to use as parent
-			// First in the flat list for backward compatibility
-			let folderPage = existingPages.find(page => page.name === folderName);
-			
-			// If not found in flat list, try using the tree search
-			if (!folderPage && existingPagesTree) {
-				const foundInTree = this.findPageByNameInTree(folderName, existingPagesTree);
-				if (foundInTree) {
-					folderPage = foundInTree;
-				}
-			}
-			
-			if (folderPage) {
-				currentParentId = folderPage.id;
-				console.log(`Found parent page for folder "${folderName}": ${currentParentId}`);
-			} else {
-				// Could create folder pages here if needed in the future
-				console.log(`No page found for folder "${folderName}". Using last known parent.`);
-			}
-		}
-		
-		return currentParentId;
 	}
 
 	/**
@@ -706,47 +659,72 @@ export default class ClickUpSyncPlugin extends Plugin {
 		// Find the specific sync target for this modified file
 		const syncTarget = this.findSyncTargetForFile(file);
 
-		if (!syncTarget) {
-			// File not in any configured sync target - silently ignore
-			return;
-		}
-		
-		console.log(`Auto-syncing modified file: ${file.path} to Doc ID: ${syncTarget.docId}`);
-		
-		// Get both tree and flat list for better mapping
-		const existingPagesTree = await this.getClickUpDocPagesTree(syncTarget.docId);
-		
-		// We need the existing pages for potential name matching if the mapping doesn't exist yet
-		const existingPages = await this.getClickUpDocPages(syncTarget.docId);
-		if (existingPages === null) {
-			console.error(`Auto-sync failed: Could not fetch pages for Doc ${syncTarget.docId}`);
-			new Notice(`Auto-sync failed for ${file.basename}: Could not fetch ClickUp pages.`);
-			return;
-		}
-		
-		// Try to find parent-child relationship based on folder structure
-		const folderPath = syncTarget.folderPath;
-		const relativePath = folderPath ? file.path.substring(folderPath.length).replace(/^\/+/, '') : file.path;
-		const pathParts = relativePath.split('/');
-		
-		// Find parent page ID if file is in a subfolder
-		let parentId = syncTarget.parentPageId;
-		if (pathParts.length > 1 && existingPagesTree) {
-			parentId = this.findParentIdForFile(pathParts, existingPages, existingPagesTree, syncTarget.parentPageId);
-		}
-		
-		// Create a modified target with potentially updated parentPageId
-		const modifiedTarget = {
-			...syncTarget,
-			parentPageId: parentId
-		};
-		
-		await this.syncFileToClickupPage(file, modifiedTarget, existingPages);
-	}
+		if (syncTarget) {
+			console.log(`Auto-syncing modified file: ${file.path} to Doc ID: ${syncTarget.docId}`);
+			
+			// Get both tree and flat list for better mapping
+			const existingPagesTree = await this.getClickUpDocPagesTree(syncTarget.docId);
+			
+			// We need the existing pages for potential name matching if the mapping doesn't exist yet
+			const existingPages = await this.getClickUpDocPages(syncTarget.docId);
+			if (existingPages === null) {
+				console.error(`Auto-sync failed: Could not fetch pages for Doc ${syncTarget.docId}`);
+				new Notice(`Auto-sync failed for ${file.basename}: Could not fetch ClickUp pages.`);
+				return;
+			}
+			
+			// Try to find parent-child relationship based on folder structure
+			let parentId = syncTarget.parentPageId;
+			const folderPath = syncTarget.folderPath;
 
-	//==============================================================================
-	// MAINTENANCE FUNCTIONS
-	//==============================================================================
+			// If the file is in a subfolder, try to sync with the folder structure
+			const relativePath = folderPath ? file.path.substring(folderPath.length).replace(/^\/+/, '') : file.path;
+			const pathParts = relativePath.split('/');
+			
+			// If file is in a subfolder, attempt to use the folder structure to determine parent
+			if (pathParts.length > 1 && existingPagesTree) {
+				let currentParentId = syncTarget.parentPageId;
+				
+				// For each directory level (except the last which is the file itself)
+				for (let i = 0; i < pathParts.length - 1; i++) {
+					const folderName = pathParts[i];
+					
+					// Try to find a page with this folder name to use as parent
+					// First in the flat list for backward compatibility
+					let folderPage = existingPages.find(page => page.name === folderName);
+					
+					// If not found in flat list, try using the tree search
+					if (!folderPage && existingPagesTree) {
+						const foundInTree = this.findPageByNameInTree(folderName, existingPagesTree);
+						if (foundInTree) {
+							folderPage = foundInTree;
+						}
+					}
+					
+					if (folderPage) {
+						currentParentId = folderPage.id;
+						console.log(`Found parent page for folder "${folderName}": ${currentParentId}`);
+					} else {
+						// Could create folder pages here if needed in the future
+						console.log(`No page found for folder "${folderName}". Using last known parent.`);
+					}
+				}
+				
+				// Use the last determined parent
+				parentId = currentParentId;
+			}
+			
+			// Create a modified target with potentially updated parentPageId
+			const modifiedTarget = {
+				...syncTarget,
+				parentPageId: parentId
+			};
+			
+			await this.syncFileToClickupPage(file, modifiedTarget, existingPages);
+		} else {
+			// File not in any configured sync target - silently ignore
+		}
+	}
 
 	/**
 	 * Removes entries from the mapping if the corresponding Obsidian file no longer exists
@@ -794,10 +772,6 @@ export default class ClickUpSyncPlugin extends Plugin {
 		}
 	}
 
-	//==============================================================================
-	// USER INTERFACE HELPERS
-	//==============================================================================
-
 	/**
 	 * Helper method to prompt the user for a Doc ID and folder path
 	 */
@@ -817,6 +791,365 @@ export default class ClickUpSyncPlugin extends Plugin {
 	displayPageTreeInModal(pageTree: ClickUpPageNode[], docId: string) {
 		const modal = new PageTreeModal(this.app, docId, pageTree, this);
 		modal.open();
+	}
+
+	/**
+	 * Syncs pages from ClickUp to Obsidian, creating/updating files to match the ClickUp structure
+	 * @param target The sync target containing docId and folderPath
+	 */
+	async syncClickUpToVault(target: SyncTarget, parentPageId?: string) {
+		const { clickUpApiKey, clickUpWorkspaceId } = this.settings;
+		const { docId, folderPath } = target;
+		
+		if (!clickUpApiKey || !clickUpWorkspaceId) {
+			new Notice('ClickUp API Key or Workspace ID not configured.');
+			return;
+		}
+		
+		if (!docId) {
+			new Notice('Sync target missing Doc ID.');
+			return;
+		}
+		
+		console.log(`Starting download from ClickUp Doc ${docId} to folder ${folderPath || '(Vault Root)'}`);
+		if (parentPageId) {
+			console.log(`Filtering to only include children of parent page ID: ${parentPageId}`);
+		}
+		
+		// 1. Get the page tree from ClickUp
+		const pageTree = await this.getClickUpDocPagesTree(docId);
+		if (!pageTree) {
+			new Notice(`Failed to fetch page tree for Doc ${docId}.`);
+			return;
+		}
+
+		
+		
+		console.log(`Found ${pageTree.length} root pages in ClickUp Doc ${docId}. Starting download...`);
+		console.log(pageTree);
+		
+		// 2. Prepare base folder path
+		const basePath = folderPath ? (folderPath.endsWith('/') ? folderPath : folderPath + '/') : '';
+		
+		// 3. Process all pages in the tree
+		let successCount = 0;
+		let errorCount = 0;
+		
+		// 4. For tracking duplicate file names
+		const processedFileNames = new Set<string>();
+		
+		try {
+			// If parentPageId is specified, find only that parent's children
+			if (parentPageId) {
+				// Function to find a page by ID in the tree
+				const findPageById = (pages: ClickUpPageNode[], id: string): ClickUpPageNode | null => {
+					for (const page of pages) {
+						if (page.id === id) {
+							return page;
+						}
+						if (page.pages && page.pages.length > 0) {
+							const found = findPageById(page.pages, id);
+							if (found) return found;
+						}
+					}
+					return null;
+				};
+				
+				// Find the parent page in the tree
+				const parentPage = findPageById(pageTree, parentPageId);
+				
+				if (!parentPage) {
+					new Notice(`Parent page with ID ${parentPageId} not found in Doc ${docId}.`);
+					console.error(`Parent page with ID ${parentPageId} not found in page tree.`);
+					return;
+				}
+				
+				if (!parentPage.pages || parentPage.pages.length === 0) {
+					new Notice(`No child pages found for parent page ${parentPage.name}.`);
+					console.log(`No child pages found for parent page ${parentPage.name} (ID: ${parentPageId}).`);
+					return;
+				}
+
+
+				
+				console.log(`Found parent page ${parentPage.name} with ${parentPage.pages.length}  ${parentPage.children.length} children. Processing only these children.`);
+				
+				// Process only the children of the specified parent
+				for (const childPage of parentPage.pages) {
+					const results = await this.processClickUpPageForDownload(
+						childPage,
+						docId,
+						basePath,
+						'',
+						processedFileNames
+					);
+					successCount += results.success;
+					errorCount += results.error;
+				}
+			} else {
+				// Original behavior: process all root pages
+				for (const rootPage of pageTree) {
+					const results = await this.processClickUpPageForDownload(
+						rootPage, 
+						docId,
+						basePath, 
+						'', 
+						processedFileNames
+					);
+					successCount += results.success;
+					errorCount += results.error;
+				}
+			}
+			
+			// Show completion notice
+			new Notice(`ClickUp sync down complete! Created/updated ${successCount} files, ${errorCount} errors.`);
+			console.log(`ClickUp Sync Down Complete: Created/updated ${successCount} files, encountered ${errorCount} errors.`);
+			
+		} catch (error) {
+			console.error('Error during ClickUp-to-Obsidian sync:', error);
+			new Notice('Error during sync from ClickUp. Check console.');
+		}
+	}
+
+	/**
+	 * Processes a ClickUp page and its children for download to Obsidian
+	 * @param page The ClickUp page to process
+	 * @param docId The ClickUp Doc ID that contains this page
+	 * @param basePath The base folder path in Obsidian
+	 * @param currentPath The current subfolder path
+	 * @param processedFileNames Set of already processed file names to avoid duplicates
+	 * @returns Count of successfully processed pages and errors
+	 */
+	async processClickUpPageForDownload(
+		page: ClickUpPageNode,
+		docId: string,
+		basePath: string,
+		currentPath: string,
+		processedFileNames: Set<string>
+	): Promise<{success: number, error: number}> {
+		let successCount = 0;
+		let errorCount = 0;
+		
+		try {
+			// 1. Get the page content
+			const pageContent = await this.getClickUpPageContent(page.id, docId); // Pass docId here
+			if (!pageContent) {
+				console.error(`Failed to get content for page: ${page.name} (${page.id})`);
+				new Notice(`Failed to download content for "${page.name}"`);
+				errorCount++;
+				// Still continue with children even if content fetch failed
+			} else {
+				// 2. Create/prepare the file path
+				let fileName = this.sanitizeFileName(page.name);
+				
+				// Handle duplicate file names by adding page ID
+				if (processedFileNames.has(fileName)) {
+					fileName = `${fileName}-${page.id.substring(0, 8)}`;
+				}
+				processedFileNames.add(fileName);
+				
+				// Add .md extension if needed
+				if (!fileName.endsWith('.md')) {
+					fileName += '.md';
+				}
+				
+				// Prepare the full path
+				const filePath = `${basePath}${currentPath}${fileName}`;
+				
+				// Check if a file with this name already exists in the destination folder
+				const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+				const existingFiles = dirPath 
+					? this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(dirPath + '/'))
+					: this.app.vault.getMarkdownFiles();
+				
+				const existingFile = existingFiles.find(f => f.basename === fileName.replace('.md', ''));
+				
+				// 3. Create or update the file
+				try {
+					if (existingFile) {
+						// Update existing file
+						await this.app.vault.modify(existingFile, pageContent);
+						console.log(`Updated existing file: ${existingFile.path}`);
+					} else {
+						// Create directories if needed
+						if (dirPath && !this.app.vault.getAbstractFileByPath(dirPath)) {
+							await this.app.vault.createFolder(dirPath);
+						}
+						
+						// Create new file
+						await this.app.vault.create(filePath, pageContent);
+						console.log(`Created new file: ${filePath}`);
+					}
+					
+					// Update page mapping in settings using the docId
+					const mappingKey = `${docId}:::${filePath}`;
+					this.settings.pageMapping[mappingKey] = page.id;
+					await this.saveSettings();
+					
+					successCount++;
+				} catch (writeError) {
+					console.error(`Error writing file ${filePath}:`, writeError);
+					new Notice(`Error writing file ${fileName}`);
+					errorCount++;
+				}
+			}
+			
+			// 4. Process children recursively
+			if (page.pages && page.pages.length > 0) {
+				// Create a subfolder for children if the current page has children
+				const newSubfolderPath = currentPath + this.sanitizeFileName(page.name) + '/';
+				
+				// Create the subfolder if it doesn't exist
+				const subfolderFullPath = basePath + newSubfolderPath;
+				if (!this.app.vault.getAbstractFileByPath(subfolderFullPath)) {
+					try {
+						await this.app.vault.createFolder(subfolderFullPath);
+						console.log(`Created subfolder: ${subfolderFullPath}`);
+					} catch (folderError) {
+						console.error(`Error creating subfolder ${subfolderFullPath}:`, folderError);
+						// Continue anyway, as we might be able to create files
+					}
+				}
+				
+				// Process each child
+				for (const child of page.pages) {
+					const childResults = await this.processClickUpPageForDownload(
+						child,
+						docId, // Pass the docId to children
+						basePath,
+						newSubfolderPath,
+						processedFileNames
+					);
+					
+					successCount += childResults.success;
+					errorCount += childResults.error;
+				}
+			}
+		} catch (error) {
+			console.error(`Error processing page ${page.name}:`, error);
+			errorCount++;
+		}
+		
+		return { success: successCount, error: errorCount };
+	}
+
+	/**
+	 * Gets the markdown content for a ClickUp page
+	 * @param pageId ClickUp page ID
+	 * @param docId Optional: The ClickUp Doc ID containing this page (if known)
+	 * @returns The markdown content or null if failed
+	 */
+	async getClickUpPageContent(pageId: string, docId?: string): Promise<string | null> {
+		const { clickUpApiKey, clickUpWorkspaceId } = this.settings;
+		
+		try {
+			// If docId wasn't provided, we need to determine which Doc this page belongs to
+			if (!docId) {
+				// Look through the mapping keys to find the Doc ID 
+				// Mapping keys are in format: ${docId}:::${filePath}
+				for (const key of Object.keys(this.settings.pageMapping)) {
+					if (this.settings.pageMapping[key] === pageId) {
+						const parts = key.split(':::');
+						if (parts.length === 2) {
+							docId = parts[0];
+							break;
+						}
+					}
+				}
+				
+				// If we can't find the docId in mappings, try to get it from sync targets
+				if (!docId) {
+					for (const target of this.settings.syncTargets) {
+						// We'll need to fetch pages for each doc to check
+						const pages = await this.getClickUpDocPages(target.docId);
+						if (pages && pages.some(page => page.id === pageId)) {
+							docId = target.docId;
+							break;
+						}
+					}
+				}
+				
+				// If we still don't have a docId, we can't proceed
+				if (!docId) {
+					console.error(`Cannot determine Doc ID for page ${pageId}`);
+					return null;
+				}
+			}
+			
+			// First try getting the page content by downloading the page content directly
+			// ClickUp API endpoint for page content
+			const url = `https://api.clickup.com/api/v3/workspaces/${clickUpWorkspaceId}/docs/${docId}/pages/${pageId}`;
+			
+			const response = await requestUrl({
+				method: 'GET',
+				url: url,
+				headers: { 'Authorization': clickUpApiKey },
+				throw: false,
+			});
+			
+			if (response.status === 200) {
+				// ClickUp typically returns page content either in 'content' or 'body'
+				// Since we want markdown format, we specify that in our request
+				let content = '';
+				
+				// Check if we need to make a second request to get markdown content
+				// Some ClickUp API versions return only metadata in the first request
+				if (response.json.id && !response.json.content) {
+					// Try a second request with format specified for content
+					const contentUrl = `https://api.clickup.com/api/v3/workspaces/${clickUpWorkspaceId}/docs/${docId}/pages/${pageId}/content?format=markdown`;
+					
+					const contentResponse = await requestUrl({
+						method: 'GET',
+						url: contentUrl,
+						headers: { 'Authorization': clickUpApiKey },
+						throw: false,
+					});
+					
+					if (contentResponse.status === 200) {
+						// The content might be in different places depending on the API version
+						content = contentResponse.json.content || 
+							contentResponse.json.markdown || 
+							contentResponse.json.text || 
+							contentResponse.text || '';
+					} else {
+						console.error(`Error fetching markdown content for page ${pageId}: ${contentResponse.status}`, contentResponse.json);
+					}
+				} else {
+					// Try to get content from first response
+					content = response.json.content || 
+						response.json.markdown || 
+						response.json.body || 
+						response.json.text || '';
+				}
+				
+				// Add a title and metadata to the content
+				const pageTitle = response.json.name || 'ClickUp Page';
+				const formattedContent = `# ${pageTitle}\n\n` + 
+					`*ClickUp Page ID: ${pageId}*\n\n` +
+					content;
+				
+				return formattedContent;
+			} else {
+				console.error(`Error fetching content for page ${pageId}: ${response.status}`, response.json);
+				return null;
+			}
+		} catch (error) {
+			console.error(`Failed to fetch content for page ${pageId}:`, error);
+			return null;
+		}
+	}
+
+	/**
+	 * Sanitizes a file name to be compatible with file systems
+	 * @param fileName The original file name
+	 * @returns A sanitized file name
+	 */
+	sanitizeFileName(fileName: string): string {
+		// Remove characters that are not allowed in file names
+		return fileName
+			.replace(/[\\/:*?"<>|]/g, '-') // Replace forbidden characters with dash
+			.replace(/\s+/g, ' ')         // Replace multiple spaces with single space
+			.trim();                      // Trim leading/trailing spaces
 	}
 
 	/**
