@@ -1,11 +1,11 @@
 {
-	"id": "clickup-plugin",
-	"name": "Clickup Plugin",
+	"id": "clickup-sync",
+	"name": "Clickup Sync",
 	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
+	"author": "firestick.live",
 	"description": "Sync your Obsidian documents with Clickup.",
-	"author": "FIRESTICK.LIVE",
-	"authorUrl": "https://firestick.live",
-	"fundingUrl": "https://firestick.live/donate",
+	"minAppVersion": "0.15.0",
+	"authorUrl": "https://www.firestick.live",
+	"fundingUrl": "https://www.firestick.live/donate",
 	"isDesktopOnly": false
 }
