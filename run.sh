@@ -1,2 +1,1 @@
-cp main.js "/Users/thinoo/Library/Mobile Documents/iCloud~md~obsidian/Documents/.obsidian/plugins/clickup"
-cp manifest.json "/Users/thinoo/Library/Mobile Documents/iCloud~md~obsidian/Documents/.obsidian/plugins/clickup"
+cp dist/* "/Users/thinoo/Library/Mobile Documents/iCloud~md~obsidian/Documents/.obsidian/plugins/clickup"

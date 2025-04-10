@@ -1,57 +1,100 @@
 # Obsidian ClickUp Sync Plugin
 
-This plugin allows you to synchronize notes from your Obsidian vault, or a specific folder within it, to pages within a designated ClickUp Document.
+This plugin syncs between Obsidian Markdown files and ClickUp Doc Pages, allowing for bidirectional integration between these two knowledge management tools.
 
 ## Features
 
-*   **Sync Obsidian Notes to ClickUp:** Keeps your ClickUp Docs updated with content from your Obsidian notes.
-*   **Target Specific Folder:** Configure the plugin to only sync notes from a particular folder in your vault.
-*   **Create or Update:** Automatically creates new pages in your ClickUp Doc for new notes or updates existing pages if a corresponding note is modified. It maintains a mapping between Obsidian files and ClickUp page IDs.
-*   **Manual Sync:** Trigger a sync manually using a ribbon icon or a command palette command ("Sync specific folder to ClickUp Doc Pages").
-*   **Automatic Sync:** Optionally enable synchronization automatically whenever a file within the target folder is saved.
+- Sync Obsidian markdown files to ClickUp document pages
+- Download ClickUp document pages to Obsidian
+- Configure multiple sync targets (folder-to-doc mappings)
+- Support for hierarchical folder structures 
+- Auto-sync on file save
+- Preserve folder hierarchy in ClickUp's page structure
 
 ## Installation
 
-1.  Download the latest release from the [Releases](https://github.com/your-username/obsidian-clickup-plugin/releases) page (Replace with your actual GitHub repo link).
-2.  Extract the plugin folder into your Obsidian vault's `.obsidian/plugins/` directory.
-3.  Reload Obsidian (Ctrl+R or Cmd+R).
-4.  Go to `Settings` -> `Community plugins`, find "ClickUp Sync Plugin" (or the name you set in `manifest.json`), and enable it.
+### From Obsidian Community Plugins
 
-Alternatively, use the [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin to install beta versions directly from the GitHub repository.
+1. Open Obsidian Settings
+2. Go to "Community Plugins" and disable "Safe Mode"
+3. Click "Browse" and search for "ClickUp Sync"
+4. Install the plugin and enable it
+
+### Manual Installation
+
+1. Download the latest release from the GitHub repository
+2. Extract the files to your Obsidian vault's `.obsidian/plugins/obsidian-clickup-sync` folder
+3. Reload Obsidian or restart the app
+4. Enable the plugin in Obsidian settings
 
 ## Configuration
 
-After enabling the plugin, you need to configure it in the settings tab:
-
-1.  **ClickUp API Key:** Your personal ClickUp API token. You can generate one in your ClickUp settings under `My Settings` -> `Apps`.
-2.  **ClickUp Workspace ID:** The ID of the ClickUp Workspace containing the target document. You can usually find this in the URL when browsing your workspace or via the ClickUp API.
-3.  **ClickUp Target Doc ID:** The ID of the specific ClickUp Document where the pages should be created/updated. Find this in the URL of the Doc.
-4.  **Obsidian Folder Path:** The path to the folder within your Obsidian vault that you want to sync. Leave blank to sync the entire vault. Example: `Notes/ClickUpSync`.
-5.  **Sync on Save:** Toggle this on if you want the plugin to automatically sync a file every time it's saved.
+1. Get your ClickUp API key from ClickUp settings > Apps
+2. Get your ClickUp Workspace ID from your ClickUp URL (e.g., app.clickup.com/1234567/...)
+3. Configure these in the plugin settings
+4. Add sync targets (mappings between Obsidian folders and ClickUp Docs)
 
 ## Usage
 
-*   **Manual Sync:**
-    *   Click the "upload-cloud" icon in the left ribbon.
-    *   Open the command palette (Ctrl+P or Cmd+P) and search for "Sync specific folder to ClickUp Doc Pages".
-*   **Automatic Sync:** If "Sync on Save" is enabled in the settings, files within the specified folder will be synced automatically when saved.
+### Sync from Obsidian to ClickUp
 
-## Building
+1. Configure your sync targets in settings
+2. Click the cloud icon in the left ribbon or run the "Sync to ClickUp Doc Pages" command
+3. Files in the configured folders will be synced to ClickUp
 
-If you want to build the plugin from the source:
+### Download from ClickUp to Obsidian
 
-1.  Clone the repository.
-2.  Navigate to the repository directory in your terminal.
-3.  Install dependencies: `npm install` (or `pnpm install` if you use pnpm).
-4.  For development (watches for changes): `npm run dev`
-5.  For a production build: `npm run build`
+1. Go to plugin settings
+2. Find your sync target
+3. Click "Download ClickUp" to download all pages from that target
+4. Optionally specify a parent page ID to only download children of that page
 
-This will generate the `main.js`, `manifest.json`, and `styles.css` files in the project root.
+## Development
 
-## Author
+This plugin uses a modular TypeScript structure:
 
-FIRESTICK.LIVE
+- `src/main.ts`: Main plugin entry point
+- `src/models/`: Data models and interfaces
+- `src/api/`: ClickUp API interaction
+- `src/views/`: UI components and modals
+- `src/utils/`: Utility functions
+- `src/core/`: Core sync logic
+
+### Building the plugin
+
+```bash
+# Install dependencies
+pnpm install
+
+# Development build with watch mode
+pnpm run dev
+
+# Production build
+pnpm run build
+
+# Clean and build for release
+pnpm run release
+```
+
+## Project Structure
+
+```
+obsidian-clickup-sync/
+├── src/                  # Source code
+│   ├── api/              # API interactions
+│   ├── core/             # Core sync logic
+│   ├── models/           # Data models
+│   ├── settings/         # Settings UI
+│   ├── utils/            # Utility functions
+│   ├── views/            # UI components
+│   └── main.ts           # Plugin entry point
+├── dist/                 # Production build output
+├── manifest.json         # Plugin manifest
+├── package.json          # Package configuration
+├── tsconfig.json         # TypeScript configuration
+└── styles.css            # CSS styles
+```
 
 ## License
 
-[MIT](LICENSE)
+MIT License

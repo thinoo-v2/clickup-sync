@@ -11,6 +11,9 @@
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,
+    "paths": {
+      "*": ["*", "src/*"]
+    },
     "lib": [
       "DOM",
       "ES5",
