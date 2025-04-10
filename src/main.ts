@@ -1,5 +1,5 @@
 import { Debouncer, Notice, Plugin, TFile } from 'obsidian';
-import { ClickUpAPI, getClickUpDocPagesTree } from './api/clickupApi';
+import { ClickUpAPI, getClickUpDocPages, getClickUpDocPagesTree, getClickUpPageContent, syncFileToClickupPage } from './api/clickupApi';
 import { ClickUpPageNode } from './models/clickupTypes';
 import { ClickUpSyncSettings, DEFAULT_SETTINGS, SyncTarget } from './models/settings';
 import { ClickUpSyncSettingTab } from './settings/settingTab';
@@ -20,12 +20,28 @@ export default class ClickUpSyncPlugin extends Plugin {
 	saveSettingsDebounced: Debouncer<[], Promise<void>>;
 	settingsTab: ClickUpSyncSettingTab;
 	statusBarItem: HTMLElement;
+	api: ClickUpAPI;
+	syncLogic: any;
 
 	async onload() {
 		await this.loadSettings();
 
 		// Load mapping initially
 		this.settings.pageMapping = (await this.loadData())?.pageMapping || {};
+
+		// Initialize API and sync logic
+		this.api = {
+			getClickUpDocPages: (docId: string) => getClickUpDocPages(docId, this.settings),
+			getClickUpDocPagesTree: (docId: string) => getClickUpDocPagesTree(docId, this.settings),
+			getClickUpPageContent: (pageId: string, docId?: string) => getClickUpPageContent(pageId, docId, this.settings),
+			syncFileToClickupPage: (file: TFile, syncTarget: SyncTarget, existingPages?: any) => 
+				syncFileToClickupPage(file, syncTarget, this.settings, existingPages)
+		};
+		
+		this.syncLogic = {
+			syncDownFromClickUp: (docId: string, folderPath: string, parentPageId?: string) => 
+				syncClickUpToVault.call(this, { docId, folderPath, parentPageId }, parentPageId)
+		};
 
 		// --- Settings Tab ---
 		this.addSettingTab(new ClickUpSyncSettingTab(this.app, this));

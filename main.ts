@@ -1124,8 +1124,9 @@ export default class ClickUpSyncPlugin extends Plugin {
 				
 				// Add a title and metadata to the content
 				const pageTitle = response.json.name || 'ClickUp Page';
-				const formattedContent = `# ${pageTitle}\n\n` + 
-					`*ClickUp Page ID: ${pageId}*\n\n` +
+				const formattedContent =
+					// `# ${pageTitle}\n\n` + 
+					// `*ClickUp Page ID: ${pageId}*\n\n` +
 					content;
 				
 				return formattedContent;

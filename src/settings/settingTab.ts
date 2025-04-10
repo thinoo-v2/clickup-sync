@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, TextComponent } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting, TextComponent } from 'obsidian';
 import ClickUpSyncPlugin from '../main';
 import { ParentPageIdModal } from '../views/modals';
 
@@ -54,27 +54,27 @@ export class ClickUpSyncSettingTab extends PluginSettingTab {
 				}));
 
 		// Setup Wizard Button
-		const wizardContainer = containerEl.createDiv();
-		wizardContainer.addClass('setup-wizard-container');
-		wizardContainer.style.textAlign = 'center';
-		wizardContainer.style.marginTop = '20px';
-		wizardContainer.style.marginBottom = '20px';
+		// const wizardContainer = containerEl.createDiv();
+		// wizardContainer.addClass('setup-wizard-container');
+		// wizardContainer.style.textAlign = 'center';
+		// wizardContainer.style.marginTop = '20px';
+		// wizardContainer.style.marginBottom = '20px';
 		
-		const wizardButton = wizardContainer.createEl('button', { 
-			text: 'Launch Setup Wizard',
-			cls: 'mod-cta'
-		});
-		wizardButton.addEventListener('click', () => {
-			this.plugin.launchSetupWizard();
-		});
+		// const wizardButton = wizardContainer.createEl('button', { 
+		// 	text: 'Launch Setup Wizard',
+		// 	cls: 'mod-cta'
+		// });
+		// wizardButton.addEventListener('click', () => {
+		// 	this.plugin.launchSetupWizard();
+		// });
 		
 		// Add help text below the button
-		const helpText = wizardContainer.createEl('div', { 
-			text: 'Quickly set up a new sync target using the wizard'
-		});
-		helpText.style.fontSize = '12px';
-		helpText.style.color = 'var(--text-muted)';
-		helpText.style.marginTop = '5px';
+		// const helpText = wizardContainer.createEl('div', { 
+		// 	text: 'Quickly set up a new sync target using the wizard'
+		// });
+		// helpText.style.fontSize = '12px';
+		// helpText.style.color = 'var(--text-muted)';
+		// helpText.style.marginTop = '5px';
 
 		// Add section for sync targets
 		containerEl.createEl('h3', { text: 'Sync Targets' });
@@ -164,6 +164,40 @@ export class ClickUpSyncSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
+
+			// Pull Pages Button
+			parentPageSetting.addButton(button => button
+				.setButtonText('Pull Pages')
+				.onClick(async () => {
+					try {
+						const docId = this.plugin.settings.syncTargets[index].docId;
+						const folderPath = this.plugin.settings.syncTargets[index].folderPath;
+						const parentPageId = this.plugin.settings.syncTargets[index].parentPageId;
+
+						if (!docId) {
+							new Notice('Please set a ClickUp Doc ID first');
+							return;
+						}
+
+						// Get the page tree from ClickUp
+						const pageTree = await this.plugin.api.getClickUpDocPagesTree(docId);
+						if (!pageTree) {
+							new Notice('Failed to fetch pages from ClickUp');
+							return;
+						}
+
+						// Start the sync process
+						await this.plugin.syncLogic.syncDownFromClickUp(
+							docId,
+							folderPath || '',
+							parentPageId
+						);
+
+					} catch (error) {
+						console.error('Error during pull operation:', error);
+						new Notice('Failed to pull pages from ClickUp. Check console for details.');
+					}
+				}));
 			
 	
 			// Delete Button
