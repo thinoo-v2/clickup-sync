@@ -205,8 +205,8 @@ export class DocIdInputModal extends Modal {
 		formContainer.style.marginBottom = '20px';
 		
 		// Show workspace info if available
-		if (this.plugin && (this.plugin.settings.defaultWorkspaceId || this.plugin.settings.clickUpWorkspaceId)) {
-			const workspaceId = this.plugin.settings.defaultWorkspaceId || this.plugin.settings.clickUpWorkspaceId;
+		if (this.plugin && this.plugin.settings.clickUpWorkspaceId) {
+			const workspaceId = this.plugin.settings.clickUpWorkspaceId;
 			const workspaceInfo = formContainer.createDiv();
 			workspaceInfo.createEl('span', {
 				text: `Using Workspace ID: ${workspaceId}`
@@ -437,8 +437,8 @@ export class SyncParamsModal extends Modal {
 		formContainer.style.marginBottom = '20px';
 		
 		// Show workspace info if available
-		if (this.plugin && (this.plugin.settings.defaultWorkspaceId || this.plugin.settings.clickUpWorkspaceId)) {
-			const workspaceId = this.plugin.settings.defaultWorkspaceId || this.plugin.settings.clickUpWorkspaceId;
+		if (this.plugin && this.plugin.settings.clickUpWorkspaceId) {
+			const workspaceId = this.plugin.settings.clickUpWorkspaceId;
 			const workspaceInfo = formContainer.createDiv();
 			workspaceInfo.createEl('span', {
 				text: `Using Workspace ID: ${workspaceId}`

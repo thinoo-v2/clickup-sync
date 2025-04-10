@@ -8,11 +8,10 @@ export interface SyncTarget {
 // Interface for ClickUp Sync settings
 export interface ClickUpSyncSettings {
 	clickUpApiKey: string;
-	clickUpWorkspaceId: string; // ClickUp Workspace ID (assuming one workspace for now)
+	clickUpWorkspaceId: string; // ClickUp Workspace ID for all operations
 	syncTargets: SyncTarget[]; // Array of sync configurations
 	syncOnSave: boolean; // Option to sync automatically when a file is saved
 	pageMapping: Record<string, string>; // Mapping: Obsidian file path -> ClickUp Page ID
-	defaultWorkspaceId: string; // Default workspace ID for new sync targets
 }
 
 // Default settings values
@@ -22,5 +21,4 @@ export const DEFAULT_SETTINGS: ClickUpSyncSettings = {
 	syncTargets: [], // Initialize as empty array
 	syncOnSave: false,
 	pageMapping: {}, // Initialize empty mapping
-	defaultWorkspaceId: '', // Initialize empty default workspace ID
 } 

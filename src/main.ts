@@ -176,9 +176,9 @@ export default class ClickUpSyncPlugin extends Plugin {
 	async launchSetupWizard() {
 		// We'll use a series of modals to guide the user through setup
 
-		// Step 1: Configure API Key and Default Workspace ID if not already set
-		if (!this.settings.clickUpApiKey || !this.settings.defaultWorkspaceId) {
-			new Notice("Please set up your ClickUp API Key and Default Workspace ID in the settings first.");
+		// Step 1: Configure API Key and Workspace ID if not already set
+		if (!this.settings.clickUpApiKey || !this.settings.clickUpWorkspaceId) {
+			new Notice("Please set up your ClickUp API Key and Workspace ID in the settings first.");
 			this.settingsTab.display(); // Open settings tab
 			return;
 		}

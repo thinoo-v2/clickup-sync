@@ -33,24 +33,12 @@ export class ClickUpSyncSettingTab extends PluginSettingTab {
 		// Workspace ID
 		new Setting(containerEl)
 			.setName('ClickUp Workspace ID')
-			.setDesc('The ID of the ClickUp Workspace')
+			.setDesc('The ID of the ClickUp Workspace used for all operations')
 			.addText(text => text
 				.setPlaceholder('1234567')
 				.setValue(this.plugin.settings.clickUpWorkspaceId)
 				.onChange(async (value) => {
 					this.plugin.settings.clickUpWorkspaceId = value.trim();
-					await this.plugin.saveSettings();
-				}));
-		
-		// Default Workspace ID
-		new Setting(containerEl)
-			.setName('Default Workspace ID')
-			.setDesc('Default Workspace ID to use for new sync targets')
-			.addText(text => text
-				.setPlaceholder('1234567')
-				.setValue(this.plugin.settings.defaultWorkspaceId)
-				.onChange(async (value) => {
-					this.plugin.settings.defaultWorkspaceId = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
@@ -177,18 +165,7 @@ export class ClickUpSyncSettingTab extends PluginSettingTab {
 					});
 			});
 			
-			parentPageSetting.addExtraButton(button => button
-				.setIcon('search')
-				.setTooltip('Pick parent page')
-				.onClick(async () => {
-					const pageId = await this.promptForParentPageId();
-					if (pageId) {
-						parentPageInput.setValue(pageId);
-						this.plugin.settings.syncTargets[index].parentPageId = pageId;
-						await this.plugin.saveSettings();
-					}
-				}));
-
+	
 			// Delete Button
 			new Setting(targetContainer)
 				.addButton(button => button
