@@ -33,7 +33,11 @@ const copyToDistDir = () => {
 	if (fs.existsSync("LICENSE")) {
 		fs.copyFileSync("LICENSE", "dist/LICENSE");
 	}
-	
+		
+	// Copy LICENSE to dist if it exists
+	if (fs.existsSync("CHANGELOG.md")) {
+		fs.copyFileSync("CHANGELOG.md", "dist/CHANGELOG.md");
+	}
 	console.log("Files copied to dist directory");
 };
 
