@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.4 (2025-04-11)
+## 1.0.5 (2025-04-11)
 
 ### Features
 - Initial release of Clickup Sync plugin for Obsidian
