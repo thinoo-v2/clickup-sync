@@ -3,7 +3,7 @@
 	"name": "Clickup Sync",
 	"version": "1.0.5",
 	"author": "THEPSYENTIST",
-	"description": "Sync your Obsidian documents with Clickup.",
+	"description": "Sync with Clickup.",
 	"minAppVersion": "0.15.0",
 	"authorUrl": "https://www.firestick.live",
 	"fundingUrl": "https://www.firestick.live/donate",
