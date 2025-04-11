@@ -1,100 +1,82 @@
-# Obsidian ClickUp Sync Plugin
+# Obsidian ClickUp Sync
 
-This plugin syncs between Obsidian Markdown files and ClickUp Doc Pages, allowing for bidirectional integration between these two knowledge management tools.
+A plugin for [Obsidian](https://obsidian.md) that synchronizes your Obsidian documents with ClickUp.
 
 ## Features
 
-- Sync Obsidian markdown files to ClickUp document pages
-- Download ClickUp document pages to Obsidian
-- Configure multiple sync targets (folder-to-doc mappings)
-- Support for hierarchical folder structures 
-- Auto-sync on file save
-- Preserve folder hierarchy in ClickUp's page structure
+- Sync your Obsidian documents/notes with ClickUp
+- Bidirectional synchronization between Obsidian and ClickUp
+- Maintain document structure and formatting across platforms
+- Automatically convert Obsidian markdown to ClickUp compatible format
+- Track document changes and keep everything in sync
+- Custom templates for new documents
 
 ## Installation
 
-### From Obsidian Community Plugins
+1. Open Obsidian
+2. Go to Settings > Community plugins
+3. Disable Safe mode
+4. Click on "Browse" and search for "ClickUp Sync"
+5. Install the plugin
+6. Enable the plugin in your list of installed plugins
 
-1. Open Obsidian Settings
-2. Go to "Community Plugins" and disable "Safe Mode"
-3. Click "Browse" and search for "ClickUp Sync"
-4. Install the plugin and enable it
+## Setup
 
-### Manual Installation
-
-1. Download the latest release from the GitHub repository
-2. Extract the files to your Obsidian vault's `.obsidian/plugins/obsidian-clickup-sync` folder
-3. Reload Obsidian or restart the app
-4. Enable the plugin in Obsidian settings
-
-## Configuration
-
-1. Get your ClickUp API key from ClickUp settings > Apps
-2. Get your ClickUp Workspace ID from your ClickUp URL (e.g., app.clickup.com/1234567/...)
-3. Configure these in the plugin settings
-4. Add sync targets (mappings between Obsidian folders and ClickUp Docs)
+1. Open the plugin settings
+2. Enter your ClickUp API key
+   - You can obtain your API key from your [ClickUp profile settings](https://app.clickup.com/settings/profile)
+3. Configure which ClickUp workspaces, spaces, and folders to sync
+4. Select the folders in your Obsidian vault to synchronize
+5. Save settings
 
 ## Usage
 
-### Sync from Obsidian to ClickUp
+### Syncing Documents
 
-1. Configure your sync targets in settings
-2. Click the cloud icon in the left ribbon or run the "Sync to ClickUp Doc Pages" command
-3. Files in the configured folders will be synced to ClickUp
+- Click the ClickUp icon in the ribbon to manually sync documents
+- Documents will automatically sync based on your sync interval settings
+- Changes made in either Obsidian or ClickUp will be synchronized
 
-### Download from ClickUp to Obsidian
 
-1. Go to plugin settings
-2. Find your sync target
-3. Click "Download ClickUp" to download all pages from that target
-4. Optionally specify a parent page ID to only download children of that page
+### Managing Document Sync
 
-## Development
+You can control document synchronization by:
 
-This plugin uses a modular TypeScript structure:
+1. Adding frontmatter to specify sync behavior for individual documents
+2. Using the command palette to force sync specific documents
+3. Right-clicking on a document in the file explorer to sync
 
-- `src/main.ts`: Main plugin entry point
-- `src/models/`: Data models and interfaces
-- `src/api/`: ClickUp API interaction
-- `src/views/`: UI components and modals
-- `src/utils/`: Utility functions
-- `src/core/`: Core sync logic
+## Troubleshooting
 
-### Building the plugin
+- **Documents not syncing**: Verify your API key and check your network connection
+- **Missing documents**: Ensure you've selected the correct folders for synchronization
+- **Sync errors**: Check the console (Ctrl+Shift+I) for error messages
+- **Formatting issues**: Some complex markdown formatting might not translate perfectly to ClickUp
 
-```bash
-# Install dependencies
-pnpm install
+## Privacy & Security
 
-# Development build with watch mode
-pnpm run dev
+- Your ClickUp API key is stored locally in your vault
+- No data is sent to third-party services
+- All communication happens directly between your Obsidian vault and the ClickUp API
 
-# Production build
-pnpm run build
+## Support
 
-# Clean and build for release
-pnpm run release
-```
+If you encounter any issues or have feature requests, please:
 
-## Project Structure
+1. Check the [FAQ](https://github.com/your-username/obsidian-clickup-sync/wiki/FAQ)
+2. Search existing [issues](https://github.com/your-username/obsidian-clickup-sync/issues)
+3. Open a new issue if your problem hasn't been reported
 
-```
-obsidian-clickup-sync/
-├── src/                  # Source code
-│   ├── api/              # API interactions
-│   ├── core/             # Core sync logic
-│   ├── models/           # Data models
-│   ├── settings/         # Settings UI
-│   ├── utils/            # Utility functions
-│   ├── views/            # UI components
-│   └── main.ts           # Plugin entry point
-├── dist/                 # Production build output
-├── manifest.json         # Plugin manifest
-├── package.json          # Package configuration
-├── tsconfig.json         # TypeScript configuration
-└── styles.css            # CSS styles
-```
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT License
+This project is licensed under the MIT License - see the LICENSE file for details.
