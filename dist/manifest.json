@@ -1,7 +1,7 @@
 {
 	"id": "clickup-sync",
 	"name": "Clickup Sync",
-	"version": "1.0.0",
+	"version": "1.0.4",
 	"author": "THEPSYENTIST",
 	"description": "Sync your Obsidian documents with Clickup.",
 	"minAppVersion": "0.15.0",
