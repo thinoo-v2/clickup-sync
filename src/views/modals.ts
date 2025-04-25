@@ -28,7 +28,7 @@ export class PageTreeModal extends Modal {
 		container.addClass("clickup-page-tree-container");
 		container.style.maxHeight = "300px";
 		container.style.overflowY = "auto";
-		container.style.marginBottom = "20px";
+		container.style.marginBottom = "10px";
 		container.style.border = "1px solid var(--background-modifier-border)";
 		container.style.padding = "10px";
 		
